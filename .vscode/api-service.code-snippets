@@ -1,0 +1,26 @@
+{
+    "gen-api-service": {
+        "prefix": "gen-api-service",
+        "body": [
+            "import 'package:retrofit/retrofit.dart';",
+            "import 'package:dio/dio.dart';",
+            "import 'package:skin_detective/models/user/user.dart';",
+            "import 'package:skin_detective/services/api_client.dart';",
+            "",
+            "part 'user.g.dart';",
+            "",
+            "@RestApi()",
+            "abstract class UserService {",
+            "  factory UserService(Dio dio, {String baseUrl}) = _UserService;",
+            "",
+            "factory UserService.client({bool? isLoading}) {",
+            "  return UserService(ClientApi().init()..options.headers['isLoading'] = isLoading);",
+            "}",
+            "",
+            "  @GET(\"/data\")",
+            "  Future<List<User>> getUsers();",
+            "}"
+        ],
+        "description": ""
+    }
+}

@@ -1,0 +1,44 @@
+{
+    "name": "dd_terminal",
+    "version": "2.0.0",
+    "description": "This project is a starting point for a Flutter application.",
+    "main": "index.js",
+    "directories": {
+        "lib": "lib",
+        "test": "test"
+    },
+    "scripts": {
+        "gen-assets": "flutter packages pub run build_runner build",
+        "gen-assets-conflict": "flutter packages pub run build_runner build --delete-conflicting-outputs",
+        "gen-icon-app": "flutter pub run flutter_launcher_icons:main -f flutter_launcher_icons.yaml",
+        "run": "flutter run",
+        "run-release": "flutter run --release",
+        "check_devices": "flutter devices",
+        "clean": "flutter clean && flutter pub get repair",
+        "flutter-test": "flutter test",
+        "build-abb": "dart scripts/build_android.dart",
+        "build-ipa": "npm run gen-assets-conflict && flutter build ipa --split-debug-info",
+        "create_key_store": "keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload",
+        "apk": "flutter build apk",
+        "apk-split": "npm run gen-assets-conflict && flutter build apk --split-per-abi",
+        "apk-analyze": "npm run gen-assets-conflict && flutter build apk --analyze-size --target-platform=android-arm64",
+        "ios-analyze": "flutter build ios --analyze-size",
+        "gen-sha-256-debug": "keytool -list -v -keystore android/app/keystore/debug.keystore -alias androiddebugkey -storepass android -keypass android",
+        "gen-sha-256-release": "keytool -list -v -keystore android/app/keystore/release.keystore -alias androidrelease -storepass android -keypass android",
+        "pem-p8-file": "openssl pkcs8 -in AuthKey.p8 -out AuthKey.pem",
+        "pem-p8-file-nocrypt": "openssl pkcs8 -nocrypt -in AuthKey.p8 -out AuthKey.pem",
+        "ios-release-dev": "flutter pub get && npm run gen-assets-conflict && cd ios && pod install && fastlane beta && cd ..",
+        "gen-splash-screen": "flutter pub run flutter_native_splash:create --path=flutter_native_splash.yaml"
+    },
+    "repository": {
+        "type": "git",
+        "url": ""
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://bitbucket.org/trieudo-pixelcent/mobile-app/issues"
+    },
+    "homepage": "https://bitbucket.org/trieudo-pixelcent/mobile-app#readme"
+}

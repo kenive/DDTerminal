@@ -1,0 +1,13 @@
+{
+    "gen-view-model": {
+        "prefix": "gen-view-model",
+        "body": [
+            "part of 'screen.dart';",
+            "class _ViewModel with ChangeNotifier {",
+            "  BuildContext context;",
+            "  _ViewModel(this.context);",
+            "}"
+        ],
+        "description": ""
+    }
+}
