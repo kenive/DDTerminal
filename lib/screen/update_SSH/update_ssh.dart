@@ -1,31 +1,30 @@
-import 'package:dd_terminal/first_SSH/first_ssh.dart';
 import 'package:dd_terminal/model/host/host.dart';
-import 'package:dd_terminal/services/local_storage.dart';
-import 'package:flutter/foundation.dart';
+import 'package:dd_terminal/screen/first_SSH/first_ssh.dart';
+import 'package:dd_terminal/services/database_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-part 'add_ssh_logic.dart';
+part 'update_ssh_logic.dart';
 
-class AddSSH extends StatefulWidget {
-  const AddSSH({Key? key}) : super(key: key);
+class UpdateSSH extends StatefulWidget {
+  const UpdateSSH({Key? key}) : super(key: key);
 
   @override
-  State<AddSSH> createState() => _AddSSHState();
+  State<UpdateSSH> createState() => _UpdateSSHState();
 }
 
-class _AddSSHState extends State<AddSSH> {
-  late AddSSHLogic add;
+class _UpdateSSHState extends State<UpdateSSH> {
+  late UpdateSshLogic update;
   @override
   void initState() {
     super.initState();
-    add = AddSSHLogic(context: context);
+    update = UpdateSshLogic(context: context);
   }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
-      value: add,
+      value: update,
       child: GestureDetector(
         onTap: () {
           FocusScope.of(context).unfocus();
@@ -33,7 +32,10 @@ class _AddSSHState extends State<AddSSH> {
         child: Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
-            title: const Text('Thêm host mới'),
+            elevation: 0,
+            bottomOpacity: 0,
+            backgroundColor: const Color(0xFF415584),
+            title: const Text('Cập nhật host'),
           ),
           body: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -42,6 +44,7 @@ class _AddSSHState extends State<AddSSH> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
@@ -53,7 +56,10 @@ class _AddSSHState extends State<AddSSH> {
                         width: 200,
                         height: 50,
                         child: TextFormField(
-                          controller: add.host,
+                          textAlignVertical: TextAlignVertical.center,
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.zero),
+                          controller: update.host,
                           style: const TextStyle(
                             fontSize: 18,
                             color: Colors.blue,
@@ -67,6 +73,7 @@ class _AddSSHState extends State<AddSSH> {
                     height: 15,
                   ),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
@@ -78,7 +85,11 @@ class _AddSSHState extends State<AddSSH> {
                         width: 200,
                         height: 50,
                         child: TextFormField(
-                          controller: add.port,
+                          keyboardType: TextInputType.number,
+                          textAlignVertical: TextAlignVertical.center,
+                          decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.zero),
+                          controller: update.port,
                           style: const TextStyle(
                             fontSize: 18,
                             color: Colors.blue,
@@ -92,10 +103,11 @@ class _AddSSHState extends State<AddSSH> {
                     height: 15,
                   ),
                   Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'UserName',
+                          'Username',
                           style: TextStyle(
                               fontSize: 20, fontWeight: FontWeight.bold),
                         ),
@@ -103,7 +115,10 @@ class _AddSSHState extends State<AddSSH> {
                           width: 200,
                           height: 50,
                           child: TextFormField(
-                            controller: add.name,
+                            textAlignVertical: TextAlignVertical.center,
+                            decoration: const InputDecoration(
+                                contentPadding: EdgeInsets.zero),
+                            controller: update.name,
                             style: const TextStyle(
                               fontSize: 18,
                               color: Colors.blue,
@@ -116,6 +131,7 @@ class _AddSSHState extends State<AddSSH> {
                     height: 15,
                   ),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
@@ -123,39 +139,59 @@ class _AddSSHState extends State<AddSSH> {
                         style: TextStyle(
                             fontSize: 20, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(
-                        width: 200,
-                        height: 50,
-                        child: TextFormField(
-                          controller: add.pass,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            color: Colors.blue,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                      Selector<UpdateSshLogic, bool>(
+                        selector: (p0, p1) => p1.passwordVisible,
+                        builder: (context, value, child) {
+                          return SizedBox(
+                            width: 200,
+                            height: 50,
+                            child: TextFormField(
+                              obscureText: value,
+                              textAlignVertical: TextAlignVertical.bottom,
+                              decoration: InputDecoration(
+                                  contentPadding: EdgeInsets.zero,
+                                  suffixIcon: Padding(
+                                    padding: const EdgeInsets.only(top: 20),
+                                    child: InkWell(
+                                        splashColor: Colors.white,
+                                        onTap: () {
+                                          update.checkPasswordVisible();
+                                        },
+                                        child: Icon(value
+                                            ? Icons.visibility_off
+                                            : Icons.visibility)),
+                                  )),
+                              controller: update.pass,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
                       )
                     ],
                   ),
                   const SizedBox(
-                    height: 15,
+                    height: 20,
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          primary: const Color(0xFF5A85F4), // background
+                        ),
                         onPressed: () {
-                          setState(() {
-                            add.submit();
-                          });
+                          update.submit();
                         },
-                        child: const Text('Lưu'),
+                        child: const Text('Cập nhật'),
                       ),
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(primary: Colors.red),
                         onPressed: () {
-                          setState(() {
-                            add.cancel();
-                          });
+                          update.cancel();
                         },
                         child: const Text('Hủy'),
                       )

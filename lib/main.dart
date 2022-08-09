@@ -1,15 +1,14 @@
-import 'package:dd_terminal/add_SSH/add_ssh.dart';
-import 'package:dd_terminal/first_SSH/first_ssh.dart';
-import 'package:dd_terminal/services/local_storage.dart';
-import 'package:dd_terminal/terminal/terminal.dart';
+import 'package:dd_terminal/screen/add_SSH/add_ssh.dart';
+import 'package:dd_terminal/screen/first_SSH/first_ssh.dart';
+import 'package:dd_terminal/screen/terminal/terminal.dart';
+import 'package:dd_terminal/screen/update_SSH/update_ssh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 
-part 'services/app.dart';
-
 void main() {
+  //WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const MyApp());
 }
 
@@ -34,9 +33,6 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // ChangeNotifierProvider(
-        //   create: (context) => GetIt.instance.get<App>(),
-        // ),
         ChangeNotifierProvider(create: (_) => FirstSSHLogic(context: context)),
         ChangeNotifierProvider(create: (_) => AddSSHLogic(context: context))
       ],
@@ -47,6 +43,7 @@ class _MyAppState extends State<MyApp> {
         routes: {
           '/': (context) => const FirstSSH(),
           '/add_ssh': (context) => const AddSSH(),
+          '/update_ssh': (context) => const UpdateSSH(),
           '/DDterminal': (context) => const DDTerminal(),
         },
       ),
