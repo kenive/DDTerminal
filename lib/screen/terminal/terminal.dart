@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:dd_terminal/model/host/host.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,7 +24,7 @@ class _DDTerminalState extends State<DDTerminal> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        FocusScope.of(context).unfocus();
+        //FocusScope.of(context).unfocus();
       },
       child: Scaffold(
         appBar: AppBar(
@@ -37,9 +36,10 @@ class _DDTerminalState extends State<DDTerminal> {
         body: SafeArea(
           child: Center(
             child: TerminalView(
+              autofocus: true,
+              padding: 10,
               style: const TerminalStyle(
-                fontSize: 20,
-              ),
+                  fontSize: 15, fontFamily: ['Cascadia Mono']),
               terminal: Terminal(
                   backend: FakeTerminalBackend(
                       value.host, value.port, value.name, value.pass),
@@ -58,6 +58,7 @@ class FakeTerminalBackend extends TerminalBackend {
   String _port;
   String _username;
   String _password;
+  String cmt = '';
 
   FakeTerminalBackend(this._host, this._port, this._username, this._password);
 
@@ -65,50 +66,57 @@ class FakeTerminalBackend extends TerminalBackend {
   final _outStream = StreamController<String>();
 
   void onWrite(String data) {
+    cmt = '';
     _outStream.sink.add(data);
   }
 
   @override
+  Stream<String> get out => _outStream.stream;
+
+  @override
   Future<int> get exitCode => _exitCodeCompleter.future;
+
   @override
   void init() {
-    // _outStream.sink.add('Nguyen Flutter');
-
-    final _sshOutput = StreamController<List<int>>();
-    _sshOutput.stream.transform(utf8.decoder).listen(onWrite);
-
-    onWrite('connecting host: $_host ...');
+    onWrite('connecting host: $_host');
     _outStream.sink.add('\r\n');
-
-    connect('');
-  }
-
-  void connect(String cmt) async {
-    String result = '';
-
     client = SSHClient(
       host: _host,
       port: int.parse(_port),
       passwordOrKey: _password,
       username: _username,
     );
+    khoiTaoConnect();
+  }
+
+  String result = '';
+  void khoiTaoConnect() async {
     try {
       result = await client.connect() ?? 'Null result';
       if (result == "session_connected") {
-        result = await client.execute(cmt) ?? 'Null result';
-        print(result);
-        onWrite(result);
+        result = await client.startShell(
+                ptyType: "xterm",
+                callback: (dynamic res) {
+                  onWrite(res);
+                }) ??
+            'Null result';
       }
-      await client.disconnect();
     } on PlatformException catch (e) {
       String errorMessage = 'Error: ${e.code}\nError Message: ${e.message}';
       result = errorMessage;
-      //onWrite('connecting host: $result...');
+      await client.disconnect();
     }
   }
 
-  @override
-  Stream<String> get out => _outStream.stream;
+  void connect(String cmt) async {
+    if (result == 'shell_started') {
+      await client.writeToShell(cmt + '\n');
+
+      cmt = '';
+    } else {
+      await client.disconnect();
+    }
+  }
 
   @override
   void resize(int width, int height, int pixelWidth, int pixelHeight) {}
@@ -116,22 +124,30 @@ class FakeTerminalBackend extends TerminalBackend {
   @override
   void write(String input) {
     if (input.isEmpty) {
+      cmt = '';
+      client.disconnect();
       return;
     }
-
     if (input == '\r') {
-      _outStream.sink.add('\r\n');
-      _outStream.sink.add('\$ ');
+      var clearCmt = cmt.replaceAll(RegExp(r'.'), '\b');
+
+      _outStream.sink.add(clearCmt);
+      connect(cmt);
     } else if (input.codeUnitAt(0) == 127) {
-      _outStream.sink.add('\b \b');
-    } else {
-      _outStream.sink.add(input);
+      _outStream.sink.add('\b');
+    }  else {
+      if (input != '\r') {
+        _outStream.sink.add(input);
+        cmt += input;
+      } else {
+        cmt = '';
+      }
     }
   }
 
   @override
   void terminate() {
-    print('object');
+    //connect(a);
   }
 
   @override
