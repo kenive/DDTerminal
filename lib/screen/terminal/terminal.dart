@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ssh2/ssh2.dart';
 import 'package:xterm/frontend/terminal_view.dart';
+
+import 'package:xterm/theme/terminal_themes.dart';
 import 'package:xterm/xterm.dart';
 
 class DDTerminal extends StatefulWidget {
@@ -14,37 +16,31 @@ class DDTerminal extends StatefulWidget {
 }
 
 class _DDTerminalState extends State<DDTerminal> {
-  @override
-  void initState() {
-    super.initState();
-  }
-
   Host get value => ModalRoute.of(context)!.settings.arguments as Host;
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        //FocusScope.of(context).unfocus();
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(value.host),
-          elevation: 0,
-          bottomOpacity: 0,
-          backgroundColor: const Color(0xFF415584),
-        ),
-        body: SafeArea(
-          child: Center(
-            child: TerminalView(
-              autofocus: true,
-              padding: 10,
-              style: const TerminalStyle(
-                  fontSize: 15, fontFamily: ['Cascadia Mono']),
-              terminal: Terminal(
-                  backend: FakeTerminalBackend(
-                      value.host, value.port, value.name, value.pass),
-                  maxLines: 10000),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(value.host),
+        elevation: 0,
+        bottomOpacity: 0,
+        backgroundColor: const Color(0xFF415584),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: TerminalView(
+            autofocus: true,
+            padding: 10,
+            style: TerminalStyle(
+              fontFamily: ['Cascadia Mono'],
+              //textStyleProvider:
+              ignoreBoldFlag: true,
             ),
+            terminal: Terminal(
+                theme: TerminalThemes.whiteOnBlack,
+                backend: FakeTerminalBackend(
+                    value.host, value.port, value.name, value.pass),
+                maxLines: 10000),
           ),
         ),
       ),
@@ -59,6 +55,7 @@ class FakeTerminalBackend extends TerminalBackend {
   String _username;
   String _password;
   String cmt = '';
+  String result = '';
 
   FakeTerminalBackend(this._host, this._port, this._username, this._password);
 
@@ -79,19 +76,20 @@ class FakeTerminalBackend extends TerminalBackend {
   @override
   void init() {
     onWrite('connecting host: $_host');
-    _outStream.sink.add('\r\n');
-    client = SSHClient(
-      host: _host,
-      port: int.parse(_port),
-      passwordOrKey: _password,
-      username: _username,
-    );
-    khoiTaoConnect();
+    _outStream.sink.add('\r\n\r\n');
+    if (result.isEmpty) {
+      khoiTaoConnect();
+    }
   }
 
-  String result = '';
   void khoiTaoConnect() async {
     try {
+      client = SSHClient(
+        host: _host,
+        port: int.parse(_port),
+        passwordOrKey: _password,
+        username: _username,
+      );
       result = await client.connect() ?? 'Null result';
       if (result == "session_connected") {
         result = await client.startShell(
@@ -99,22 +97,21 @@ class FakeTerminalBackend extends TerminalBackend {
                 callback: (dynamic res) {
                   onWrite(res);
                 }) ??
-            'Null result';
+            '';
+      } else {
+        result = '';
+        await client.disconnect();
       }
     } on PlatformException catch (e) {
-      String errorMessage = 'Error: ${e.code}\nError Message: ${e.message}';
-      result = errorMessage;
+      onWrite('Connection to host abc failed');
       await client.disconnect();
+      debugPrint('$e');
     }
   }
 
   void connect(String cmt) async {
     if (result == 'shell_started') {
       await client.writeToShell(cmt + '\n');
-
-      cmt = '';
-    } else {
-      await client.disconnect();
     }
   }
 
@@ -125,20 +122,20 @@ class FakeTerminalBackend extends TerminalBackend {
   void write(String input) {
     if (input.isEmpty) {
       cmt = '';
-      client.disconnect();
       return;
     }
     if (input == '\r') {
-      var clearCmt = cmt.replaceAll(RegExp(r'.'), '\b');
-
+      String clearCmt = cmt.replaceAll(RegExp(r'.'), '\b');
       _outStream.sink.add(clearCmt);
       connect(cmt);
     } else if (input.codeUnitAt(0) == 127) {
-      _outStream.sink.add('\b');
-    }  else {
-      if (input != '\r') {
-        _outStream.sink.add(input);
+      print('object');
+    } else if (input.codeUnitAt(0) == 80) {
+      _outStream.sink.add(' \b');
+    } else {
+      if (input != '\r' && input.codeUnitAt(0) != 127) {
         cmt += input;
+        _outStream.sink.add(input);
       } else {
         cmt = '';
       }
@@ -146,9 +143,7 @@ class FakeTerminalBackend extends TerminalBackend {
   }
 
   @override
-  void terminate() {
-    //connect(a);
-  }
+  void terminate() {}
 
   @override
   void ackProcessed() {}
