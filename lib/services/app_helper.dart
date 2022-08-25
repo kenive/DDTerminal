@@ -5,26 +5,14 @@ class Helper with ChangeNotifier {
 
   double heightKeyboard = 0;
 
-  double heightActionKeyBoard = 338;
+  double heightActionKeyBoard = 200;
 
   void getHeightKeyboard(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height -
-        (MediaQuery.of(context).viewInsets.bottom + heightActionKeyBoard);
-    heightKeyboard = screenHeight;
+    double heightBottom =
+        MediaQuery.of(context).viewPadding.bottom > 0 ? 290 : 189;
+
+    heightKeyboard = MediaQuery.of(context).size.height -
+        (heightBottom + heightActionKeyBoard);
     notifyListeners();
   }
-
-  // static double heightKeyboard({
-  //   BuildContext? context,
-  // }) {
-  //   double screenHeight;
-
-  //   if (context != null) {
-  //     screenHeight = MediaQuery.of(context).size.height -
-  //         (MediaQuery.of(context).viewInsets.bottom);
-  //   } else {
-  //     screenHeight = 0;
-  //   }
-  //   return screenHeight;
-  // }
 }

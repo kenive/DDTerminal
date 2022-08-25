@@ -12,7 +12,15 @@ import 'package:xterm/xterm.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
 part 'terminal_logic.dart';
 
-enum ActionKeyboard { left, right, up, down, quit }
+enum ActionKeyboard { left, right, up, down, send, quit }
+
+List<String> history = [];
+
+String send = '';
+String tamp = '';
+
+int index = 0;
+bool isGetHistory = false;
 
 class DDTerminal extends StatefulWidget {
   const DDTerminal({Key? key}) : super(key: key);
@@ -25,19 +33,15 @@ class _DDTerminalState extends State<DDTerminal>
     with AutomaticKeepAliveClientMixin {
   late TerminalLogic logic;
 
-  late Helper abc;
-
   final FocusNode node = FocusNode();
+  final FocusNode node1 = FocusNode();
 
   final ValueNotifier<ActionKeyboard> actionKeyboard =
-      ValueNotifier(ActionKeyboard.quit);
-
-  late ScrollController scrollController;
+      ValueNotifier(ActionKeyboard.down);
 
   Host get value => ModalRoute.of(context)!.settings.arguments as Host;
 
-  //double get he => Helper.heightKeyboard(context: context);
-  double va = 0;
+  TextEditingController text = TextEditingController();
 
   @override
   void initState() {
@@ -47,23 +51,22 @@ class _DDTerminalState extends State<DDTerminal>
     WidgetsBinding.instance!.addPostFrameCallback((_) {
       FakeTerminalBackend('', '', '', '', actionKeyboard);
     });
-
-    // myTerminal ??= FakeTerminalBackend(
-    //     value.host, value.port, value.name, value.pass, actionKeyboard);
   }
-
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   //myTerminal ??= FakeTerminalBackend('', '', '', '', actionKeyboard);
-  //   print(value.host);
-  //   myTerminal ??= FakeTerminalBackend(
-  //       value.host, value.port, value.name, value.pass, actionKeyboard);
-  // }
 
   @override
   void dispose() {
+    node.dispose();
+    node1.dispose();
+    actionKeyboard.dispose();
+    text.dispose();
     super.dispose();
+  }
+
+  void reset() {
+    tamp = '';
+    send = '';
+    index = 0;
+    count = 1;
   }
 
   void xuLyAction(ActionKeyboard action) {
@@ -75,9 +78,29 @@ class _DDTerminalState extends State<DDTerminal>
     }
   }
 
+  static int count = 0;
+  void xuLyActionMove(ActionKeyboard action) {
+    switch (action) {
+      case ActionKeyboard.left:
+        if (count != text.text.length) {
+          count++;
+          text.selection =
+              TextSelection.collapsed(offset: text.text.length - count);
+        }
+        break;
+      default:
+        if (count != 0) {
+          count--;
+          text.selection =
+              TextSelection.collapsed(offset: text.text.length - count);
+        }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
     return ChangeNotifierProvider.value(
       value: logic,
       child: Scaffold(
@@ -90,24 +113,31 @@ class _DDTerminalState extends State<DDTerminal>
         ),
         body: SafeArea(
           child: KeyboardActions(
-            tapOutsideBehavior: TapOutsideBehavior.translucentDismiss,
-            keepFocusOnTappingNode: true,
             bottomAvoiderScrollPhysics: const ScrollPhysics(),
+            tapOutsideBehavior: TapOutsideBehavior.none,
+            keepFocusOnTappingNode: true,
+            // autoScroll: false,
+            // disableScroll: true,
+            //bottomAvoiderScrollPhysics: const ScrollPhysics(),
             config: KeyboardActionsConfig(
               keyboardActionsPlatform: KeyboardActionsPlatform.ALL,
               keyboardBarColor: Colors.grey,
+              nextFocus: false,
               actions: [
                 KeyboardActionsItem(
                   displayArrows: false,
                   focusNode: node,
                   displayDoneButton: false,
+                  enabled: false,
                   toolbarButtons: [
                     (node) {
                       return Row(
                         children: [
                           InkWell(
                             onTap: () {
-                              xuLyAction(ActionKeyboard.left);
+                              if (text.text.isNotEmpty) {
+                                xuLyActionMove(ActionKeyboard.left);
+                              }
                             },
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 5),
@@ -127,7 +157,9 @@ class _DDTerminalState extends State<DDTerminal>
                           ),
                           InkWell(
                             onTap: () {
-                              xuLyAction(ActionKeyboard.right);
+                              if (text.text.isNotEmpty) {
+                                xuLyActionMove(ActionKeyboard.right);
+                              }
                             },
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 5),
@@ -148,6 +180,15 @@ class _DDTerminalState extends State<DDTerminal>
                           InkWell(
                             onTap: () {
                               xuLyAction(ActionKeyboard.down);
+                              if (index != 0) {
+                                text.text = '';
+                                count = 0;
+                                text.text = history[index];
+                              } else {
+                                text.text = tamp;
+                              }
+                              text.selection = TextSelection.collapsed(
+                                  offset: text.text.length);
                             },
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 5),
@@ -168,6 +209,15 @@ class _DDTerminalState extends State<DDTerminal>
                           InkWell(
                             onTap: () {
                               xuLyAction(ActionKeyboard.up);
+                              if (index != 0) {
+                                text.text = '';
+                                count = 0;
+                                text.text = history[index];
+                              } else {
+                                text.text = tamp;
+                              }
+                              text.selection = TextSelection.collapsed(
+                                  offset: text.text.length);
                             },
                             child: Container(
                               margin: const EdgeInsets.symmetric(horizontal: 5),
@@ -193,27 +243,93 @@ class _DDTerminalState extends State<DDTerminal>
               ],
             ),
             child: SingleChildScrollView(
-              child: SizedBox(
-                  height: GetIt.instance.get<Helper>().heightKeyboard,
-                  child: TerminalView(
-                    autofocus: true,
-                    padding: 5,
-                    focusNode: node,
-                    // autocorrect: true,
-                    scrollController: ScrollController(),
-                    scrollBehavior: const ScrollBehavior(),
-                    style: const TerminalStyle(
-                      fontFamily: ['Cascadia Mono'],
-                      fontSize: 15,
-                      ignoreBoldFlag: true,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    height: GetIt.instance.get<Helper>().heightKeyboard,
+                    child: TerminalView(
+                      autofocus: false,
+                      padding: 5,
+                      focusNode: node,
+                      // enableSuggestions: true,
+                      scrollController: ScrollController(),
+                      scrollBehavior: const ScrollBehavior(),
+                      style: const TerminalStyle(
+                        fontFamily: ['Cascadia Mono'],
+                        fontSize: 15,
+                        ignoreBoldFlag: true,
+                      ),
+                      terminal: Terminal(
+                          theme: TerminalThemes.whiteOnBlack,
+                          backend: FakeTerminalBackend(value.host, value.port,
+                              value.name, value.pass, actionKeyboard),
+                          maxLines: 10000),
                     ),
-                    terminal: Terminal(
-                        theme: TerminalThemes.whiteOnBlack,
-                        //backend: myTerminal,
-                        backend: FakeTerminalBackend(value.host, value.port,
-                            value.name, value.pass, actionKeyboard),
-                        maxLines: 10000),
-                  )),
+                  ),
+                  const SizedBox(
+                    height: 3,
+                  ),
+                  Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 5),
+                      width: double.infinity,
+                      child: TextFormField(
+                        autofocus: true,
+                        focusNode: node,
+                        showCursor: true,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.done,
+                        keyboardType: TextInputType.text,
+                        textAlign: TextAlign.center,
+                        //scrollPadding: const EdgeInsets.all(10),
+                        textAlignVertical: TextAlignVertical.center,
+                        controller: text,
+                        cursorHeight: 18,
+                        cursorColor: Colors.green,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        decoration: const InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.deepPurple,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.deepPurple,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onTap: () {
+                          if (history.isEmpty) {
+                            xuLyAction(ActionKeyboard.up);
+                          }
+                        },
+                        onChanged: (value) {
+                          if (history.isEmpty) {
+                            xuLyAction(ActionKeyboard.up);
+                          }
+                          tamp = value;
+                        },
+                        onFieldSubmitted: (value) {
+                          send = value;
+                          text.clear();
+                          xuLyAction(ActionKeyboard.send);
+                        },
+                        onEditingComplete: () {
+                          reset();
+
+                          //xuLyAction(ActionKeyboard.left);
+                        },
+                      )),
+                ],
+              ),
             ),
           ),
         ),
@@ -227,6 +343,7 @@ class _DDTerminalState extends State<DDTerminal>
 
 class FakeTerminalBackend extends TerminalBackend {
   late SSHClient client;
+
   final ValueNotifier<ActionKeyboard> actionKeyboard;
 
   final String _host;
@@ -244,17 +361,18 @@ class FakeTerminalBackend extends TerminalBackend {
 
   final _exitCodeCompleter = Completer<int>();
   final _outStream = StreamController<String>();
+
   void onWrite(String data) {
     _outStream.sink.add(data);
   }
 
-  void onWriteAction(String data) {
-    // if (countLeft > 0) {
-    //   cmd += data;
-    // } else if (countRight > 0) {
-    //   cmd += data;
-    // }
+  void onGetHistory(String data) async {
+    data = data.replaceAll('\n', '');
+    history = data.split('\r').reversed.toList();
+    //history = history.reversed.toList();
+  }
 
+  void onWriteAction(String data) {
     _outStream.sink.add(data);
   }
 
@@ -275,7 +393,13 @@ class FakeTerminalBackend extends TerminalBackend {
     onWrite('connecting host: $_host');
     _outStream.sink.add('\r\n\r\n');
     khoiTaoConnect();
+
     actionKeyboard.addListener(listenerActionKeyboard);
+  }
+
+  void getHistory() {
+    //history = [];
+    client.writeToShell('cat ~/.bash_history\n');
   }
 
   void khoiTaoConnect() async {
@@ -285,7 +409,11 @@ class FakeTerminalBackend extends TerminalBackend {
         result = await client.startShell(
                 ptyType: "xterm",
                 callback: (dynamic res) {
-                  onWrite(res);
+                  if (!isGetHistory) {
+                    onWrite(res);
+                  } else {
+                    onGetHistory(res);
+                  }
                   cmd = '';
                 }) ??
             '';
@@ -303,16 +431,11 @@ class FakeTerminalBackend extends TerminalBackend {
 
   void connect(String cmt) async {
     try {
-      // if (countLeft > 0) {
-      //   String clearCmt = cmd.replaceAll(RegExp(r'.'), '\b');
-      //   _outStream.sink.add(clearCmt);
-      // }
       if (result == 'shell_started') {
         await client.writeToShell(cmt + '\n');
       } else {
         await client.disconnect();
       }
-      resetCount();
     } catch (e) {
       debugPrint('$e');
     }
@@ -327,25 +450,85 @@ class FakeTerminalBackend extends TerminalBackend {
       cmd = '';
       return;
     }
-    if (input.codeUnitAt(0) == 13) {
-      String clearCmt = cmd.replaceAll(RegExp(r'.'), '\b');
-      _outStream.sink.add(clearCmt);
-      connect(cmd);
-    } else if (input.codeUnitAt(0) == 27) {
-      if (cmd.isNotEmpty) {
-        _outStream.sink.add('\b \b');
-        cmd = cmd.substring(0, cmd.length - 1);
-      }
-    } else if (input.codeUnitAt(0) == 97) {
-      cmd = cmd.substring(0, cmd.length - 1);
-    } else {
-      if (input != '\r' &&
-          input.codeUnitAt(0) != 127 &&
-          input.codeUnitAt(0) != 27) {
-        _outStream.sink.add(input);
-        cmd += input;
-      }
-    }
+
+    // if (countLeft > 0 || countRight > 0) {
+    //   if (input.codeUnitAt(0) == 13) {
+    //     for (var i = 0; i < cmd.length - countLeft; i++) {
+    //       onWrite('\b');
+    //     }
+
+    //     connect(cmd);
+    //   } else if (input.codeUnitAt(0) == 27) {
+    //     if (cmd.isNotEmpty) {
+    //       if (countLeft > 0) {
+    //         String kiTuXoa = cmd[cmd.length - countLeft - 1];
+
+    //         for (var i = 0; i < cmd.length; i++) {
+    //           if (i == (cmd.length - countLeft - 1) && cmd[i] == kiTuXoa) {
+    //             cmd = cmd.replaceFirst(cmd[i], '');
+    //             break;
+    //           }
+    //         }
+    //         String ex = cmd.substring(cmd.length - countLeft);
+    //         _outStream.sink.add('\b \b' + ex + ' \b');
+
+    //         for (var i = 0; i < ex.length; i++) {
+    //           _outStream.sink.add('\b');
+    //         }
+    //       } else {
+    //         _outStream.sink.add('\b \b');
+    //         cmd = cmd.substring(0, cmd.length - 1);
+    //       }
+    //     }
+    //   } else {
+    //     if (input != '\r' &&
+    //         input.codeUnitAt(0) != 127 &&
+    //         input.codeUnitAt(0) != 27) {
+    //       if (cmd[0] != cmd[1] || cmd.length > 2) {
+    //         String ex = cmd.substring(cmd.length - countLeft);
+
+    //         String b = input + ex;
+
+    //         cmd = cmd.replaceAll(ex, b);
+
+    //         _outStream.sink.add(input + ex);
+    //         for (var i = 0; i < ex.length; i++) {
+    //           _outStream.sink.add('\b');
+    //         }
+    //       } else if (cmd[0] == cmd[1] || cmd.length == 2) {
+    //         String ex = cmd.substring(cmd.length - countLeft);
+    //         String tamp = cmd[0];
+
+    //         String b = input + ex;
+
+    //         cmd = tamp + b;
+
+    //         _outStream.sink.add(input + ex);
+    //         for (var i = 0; i < ex.length; i++) {
+    //           _outStream.sink.add('\b');
+    //         }
+    //       }
+    //     }
+    //   }
+    // } else {
+    //   if (input.codeUnitAt(0) == 13) {
+    //     String clearCmt = cmd.replaceAll(RegExp(r'.'), '\b');
+    //     _outStream.sink.add(clearCmt);
+    //     connect(cmd);
+    //   } else if (input.codeUnitAt(0) == 27) {
+    //     if (cmd.isNotEmpty) {
+    //       _outStream.sink.add('\b \b');
+    //       cmd = cmd.substring(0, cmd.length - 1);
+    //     }
+    //   } else {
+    //     if (input != '\r' &&
+    //         input.codeUnitAt(0) != 127 &&
+    //         input.codeUnitAt(0) != 27) {
+    //       _outStream.sink.add(input);
+    //       cmd += input;
+    //     }
+    //   }
+    // }
   }
 
   @override
@@ -364,25 +547,48 @@ class FakeTerminalBackend extends TerminalBackend {
   void listenerActionKeyboard() {
     switch (actionKeyboard.value) {
       case ActionKeyboard.up:
+        if (history.isEmpty) {
+          getHistory();
+        } else if (history.isNotEmpty) {
+          if (index == history.length) {
+            break;
+          }
+          index++;
+        }
+        if (history.isNotEmpty) {
+          isGetHistory = false;
+        } else {
+          isGetHistory = true;
+        }
         break;
       case ActionKeyboard.down:
-        break;
-      case ActionKeyboard.right:
-        if (countLeft > 0) {
-          countRight++;
-          onWriteAction(cmd[cmd.length - countLeft]);
-          countLeft--;
-        } else {}
-        break;
-      default:
-        if (cmd.length > countLeft) {
-          countLeft++;
-          if (cmd.isNotEmpty) {
-            if (cmd.length >= countLeft) {
-              onWriteAction('\b');
+        if (history.isEmpty) {
+          getHistory();
+        } else if (history.isNotEmpty) {
+          if (index == 0) {
+            break;
+          }
+          if (index < 0) {
+            break;
+          } else if (index > 0) {
+            index--;
+            if (index == 0) {
+              break;
             }
           }
         }
+        if (history.isNotEmpty) {
+          isGetHistory = false;
+        } else {
+          isGetHistory = true;
+        }
+        break;
+
+      case ActionKeyboard.send:
+        connect(send);
+        break;
+      default:
+      // getHistory();
     }
   }
 }
