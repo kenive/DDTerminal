@@ -60,7 +60,7 @@ class _DDTerminalState extends State<DDTerminal>
   @override
   void dispose() {
     node.dispose();
-
+    reset();
     super.dispose();
   }
 
