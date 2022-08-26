@@ -58,6 +58,13 @@ dev_dependencies:
   flutter_lints: ^1.0.0
   retrofit_generator: ^4.0.0
   build_runner: ^2.1.11
+  flutter_launcher_icons: ^0.9.1
+
+flutter_icons:
+  image_path: "assets/icons/icon.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -71,7 +78,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/
+    - assets/icons/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
