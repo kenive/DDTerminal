@@ -12,7 +12,7 @@ import 'package:xterm/xterm.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
 part 'terminal_logic.dart';
 
-enum ActionKeyboard { left, right, up, down, send, quit }
+enum ActionKeyboard { left, right, up, down, send, history }
 
 List<String> history = [];
 
@@ -20,7 +20,6 @@ String send = '';
 String tamp = '';
 
 int index = 0;
-bool isGetHistory = false;
 
 class DDTerminal extends StatefulWidget {
   const DDTerminal({Key? key}) : super(key: key);
@@ -33,8 +32,7 @@ class _DDTerminalState extends State<DDTerminal>
     with AutomaticKeepAliveClientMixin {
   late TerminalLogic logic;
 
-  final FocusNode node = FocusNode();
-  final FocusNode node1 = FocusNode();
+  late FocusNode node = FocusNode();
 
   final ValueNotifier<ActionKeyboard> actionKeyboard =
       ValueNotifier(ActionKeyboard.down);
@@ -54,11 +52,15 @@ class _DDTerminalState extends State<DDTerminal>
   }
 
   @override
+  void didChangeDependencies() {
+    xuLyAction(ActionKeyboard.history);
+    super.didChangeDependencies();
+  }
+
+  @override
   void dispose() {
     node.dispose();
-    node1.dispose();
-    actionKeyboard.dispose();
-    text.dispose();
+
     super.dispose();
   }
 
@@ -66,7 +68,7 @@ class _DDTerminalState extends State<DDTerminal>
     tamp = '';
     send = '';
     index = 0;
-    count = 1;
+    count = 0;
   }
 
   void xuLyAction(ActionKeyboard action) {
@@ -79,6 +81,7 @@ class _DDTerminalState extends State<DDTerminal>
   }
 
   static int count = 0;
+
   void xuLyActionMove(ActionKeyboard action) {
     switch (action) {
       case ActionKeyboard.left:
@@ -105,6 +108,7 @@ class _DDTerminalState extends State<DDTerminal>
       value: logic,
       child: Scaffold(
         resizeToAvoidBottomInset: false,
+        backgroundColor: Colors.black,
         appBar: AppBar(
           title: Text(value.host),
           elevation: 0,
@@ -125,10 +129,10 @@ class _DDTerminalState extends State<DDTerminal>
               nextFocus: false,
               actions: [
                 KeyboardActionsItem(
-                  displayArrows: false,
                   focusNode: node,
                   displayDoneButton: false,
-                  enabled: false,
+                  //displayDoneButton: true,
+                  toolbarAlignment: MainAxisAlignment.center,
                   toolbarButtons: [
                     (node) {
                       return Row(
@@ -180,13 +184,14 @@ class _DDTerminalState extends State<DDTerminal>
                           InkWell(
                             onTap: () {
                               xuLyAction(ActionKeyboard.down);
-                              if (index != 0) {
+                              if (index != 0 && history.isNotEmpty) {
                                 text.text = '';
                                 count = 0;
                                 text.text = history[index];
                               } else {
                                 text.text = tamp;
                               }
+
                               text.selection = TextSelection.collapsed(
                                   offset: text.text.length);
                             },
@@ -209,7 +214,7 @@ class _DDTerminalState extends State<DDTerminal>
                           InkWell(
                             onTap: () {
                               xuLyAction(ActionKeyboard.up);
-                              if (index != 0) {
+                              if (index != 0 && history.isNotEmpty) {
                                 text.text = '';
                                 count = 0;
                                 text.text = history[index];
@@ -252,7 +257,6 @@ class _DDTerminalState extends State<DDTerminal>
                       autofocus: false,
                       padding: 5,
                       focusNode: node,
-                      // enableSuggestions: true,
                       scrollController: ScrollController(),
                       scrollBehavior: const ScrollBehavior(),
                       style: const TerminalStyle(
@@ -271,63 +275,84 @@ class _DDTerminalState extends State<DDTerminal>
                     height: 3,
                   ),
                   Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      width: double.infinity,
-                      child: TextFormField(
-                        autofocus: true,
-                        focusNode: node,
-                        showCursor: true,
-                        autocorrect: false,
-                        textInputAction: TextInputAction.done,
-                        keyboardType: TextInputType.text,
-                        textAlign: TextAlign.center,
-                        //scrollPadding: const EdgeInsets.all(10),
-                        textAlignVertical: TextAlignVertical.center,
-                        controller: text,
-                        cursorHeight: 18,
-                        cursorColor: Colors.green,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        decoration: const InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.deepPurple,
-                              width: 2,
-                            ),
+                    width: double.infinity,
+                    height: 50,
+                    color: Colors.black,
+                    child: TextFormField(
+                      autofocus: true,
+                      focusNode: node,
+                      showCursor: true,
+                      autocorrect: false,
+                      expands: true,
+                      enableInteractiveSelection: false,
+                      textInputAction: TextInputAction.continueAction,
+                      keyboardType: TextInputType.text,
+                      textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
+                      controller: text,
+                      cursorHeight: 20,
+                      maxLines: null,
+                      minLines: null,
+                      cursorColor: Colors.grey[400],
+                      style: const TextStyle(
+                        backgroundColor: Colors.white,
+                        fontSize: 18,
+                        color: Colors.black,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        suffixIcon: InkWell(
+                            onTap: () {
+                              if (text.text.isNotEmpty) {
+                                send = text.text;
+                                text.clear();
+                                xuLyAction(ActionKeyboard.send);
+                                if (send.trim().isNotEmpty) {
+                                  history.insert(1, send);
+                                }
+                                reset();
+                              }
+                            },
+                            child: const Icon(Icons.send, color: Colors.blue)),
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Colors.black,
+                            width: 2,
                           ),
-                          contentPadding: EdgeInsets.symmetric(vertical: 12),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.deepPurple,
-                              width: 2,
-                            ),
+                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Colors.black,
+                            width: 2,
                           ),
                         ),
-                        onTap: () {
-                          if (history.isEmpty) {
-                            xuLyAction(ActionKeyboard.up);
-                          }
-                        },
-                        onChanged: (value) {
-                          if (history.isEmpty) {
-                            xuLyAction(ActionKeyboard.up);
-                          }
-                          tamp = value;
-                        },
-                        onFieldSubmitted: (value) {
-                          send = value;
-                          text.clear();
-                          xuLyAction(ActionKeyboard.send);
-                        },
-                        onEditingComplete: () {
-                          reset();
-
-                          //xuLyAction(ActionKeyboard.left);
-                        },
-                      )),
+                      ),
+                      onTap: () {
+                        if (history.isEmpty) {
+                          xuLyAction(ActionKeyboard.history);
+                        }
+                      },
+                      onChanged: (value) {
+                        if (history.isEmpty) {
+                          xuLyAction(ActionKeyboard.history);
+                        }
+                        tamp = value;
+                      },
+                      // onFieldSubmitted: (value) {
+                      //   send = value;
+                      //   text.clear();
+                      //   xuLyAction(ActionKeyboard.send);
+                      // },
+                      // onEditingComplete: () {
+                      //   history.insert(1, send);
+                      //   reset();
+                      // },
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -356,6 +381,8 @@ class FakeTerminalBackend extends TerminalBackend {
   int countRight = 0;
   int countLeft = 0;
 
+  bool isGetHistory = false;
+
   FakeTerminalBackend(this._host, this._port, this._username, this._password,
       this.actionKeyboard);
 
@@ -369,11 +396,7 @@ class FakeTerminalBackend extends TerminalBackend {
   void onGetHistory(String data) async {
     data = data.replaceAll('\n', '');
     history = data.split('\r').reversed.toList();
-    //history = history.reversed.toList();
-  }
-
-  void onWriteAction(String data) {
-    _outStream.sink.add(data);
+    // history = history.reversed.toList();
   }
 
   @override
@@ -446,11 +469,6 @@ class FakeTerminalBackend extends TerminalBackend {
 
   @override
   void write(String input) {
-    if (input.isEmpty) {
-      cmd = '';
-      return;
-    }
-
     // if (countLeft > 0 || countRight > 0) {
     //   if (input.codeUnitAt(0) == 13) {
     //     for (var i = 0; i < cmd.length - countLeft; i++) {
@@ -546,19 +564,34 @@ class FakeTerminalBackend extends TerminalBackend {
 
   void listenerActionKeyboard() {
     switch (actionKeyboard.value) {
+      case ActionKeyboard.history:
+        if (history.isEmpty) {
+          getHistory();
+        }
+        if (history.isEmpty) {
+          isGetHistory = true;
+        } else {
+          isGetHistory = false;
+        }
+        break;
       case ActionKeyboard.up:
         if (history.isEmpty) {
           getHistory();
         } else if (history.isNotEmpty) {
           if (index == history.length) {
             break;
+          } else {
+            if (history.length == 1) {
+              break;
+            } else {
+              index++;
+            }
           }
-          index++;
         }
-        if (history.isNotEmpty) {
-          isGetHistory = false;
-        } else {
+        if (history.isEmpty) {
           isGetHistory = true;
+        } else {
+          isGetHistory = false;
         }
         break;
       case ActionKeyboard.down:
@@ -568,23 +601,23 @@ class FakeTerminalBackend extends TerminalBackend {
           if (index == 0) {
             break;
           }
-          if (index < 0) {
-            break;
-          } else if (index > 0) {
+          if (index > 0) {
             index--;
             if (index == 0) {
               break;
             }
           }
         }
-        if (history.isNotEmpty) {
-          isGetHistory = false;
-        } else {
+        if (history.isEmpty) {
           isGetHistory = true;
+        } else {
+          isGetHistory = false;
         }
         break;
-
       case ActionKeyboard.send:
+        if (isGetHistory) {
+          isGetHistory = false;
+        }
         connect(send);
         break;
       default:
